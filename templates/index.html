@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>InsightLens</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 40px;
+      background: #f8f9fa;
+      color: #222;
+    }
+    h1 { color: #333; }
+    button {
+      margin: 10px;
+      padding: 10px 20px;
+      cursor: pointer;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      transition: background 0.3s ease;
+    }
+    button:hover { background: #0056b3; }
+    #status {
+      margin-top: 20px;
+      font-weight: bold;
+      color: #444;
+    }
+    #output {
+      margin-top: 20px;
+      white-space: pre-wrap;
+      background: #fff;
+      padding: 15px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎧 InsightLens Dashboard</h1>
+
+  <input type="file" id="fileInput" />
+  <button onclick="uploadFile()">Upload</button>
+  <button onclick="transcribe()">Transcribe</button>
+  <button onclick="summarize()">Summarize</button>
+  <button onclick="analyzeSentiment()">Analyze Sentiment</button>
+
+  <div id="status"></div>
+  <div id="output"></div>
+
+  <script>
+    async function uploadFile() {
+      const fileInput = document.getElementById('fileInput');
+      const file = fileInput.files[0];
+      if (!file) return alert("Please select a file first.");
+      
+      const formData = new FormData();
+      formData.append('file', file);
+      document.getElementById('status').innerText = "📤 Uploading...";
+      
+      try {
+        const res = await fetch('/upload', { method: 'POST', body: formData });
+        const data = await res.json();
+        document.getElementById('status').innerText = data.message || data.error;
+      } catch (err) {
+        document.getElementById('status').innerText = "❌ Upload failed.";
+      }
+    }
+
+    async function transcribe() {
+      document.getElementById('status').innerText = "🎙️ Transcribing audio...";
+      try {
+        const res = await fetch('/transcribe', { method: 'POST' });
+        const data = await res.json();
+        document.getElementById('status').innerText = data.message || "✅ Transcription complete.";
+        document.getElementById('output').innerText = data.transcription || data.message;
+      } catch (err) {
+        document.getElementById('status').innerText = "❌ Transcription failed.";
+      }
+    }
+
+    async function summarize() {
+      document.getElementById('status').innerText = "🧠 Summarizing transcript...";
+      try {
+        const res = await fetch('/summarize', { method: 'POST' });
+        const data = await res.json();
+        document.getElementById('status').innerText = data.message || "✅ Summary generated.";
+        if (data.output_file) {
+          document.getElementById('output').innerText = `Summary file saved at:\n${data.output_file}`;
+        } else {
+          document.getElementById('output').innerText = JSON.stringify(data, null, 2);
+        }
+      } catch (err) {
+        document.getElementById('status').innerText = "❌ Summarization failed.";
+      }
+    }
+
+    async function analyzeSentiment() {
+      document.getElementById('status').innerText = "💬 Analyzing sentiment...";
+      try {
+        const res = await fetch('/analyze_sentiment', { 
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({})
+        });
+        const data = await res.json();
+        document.getElementById('status').innerText = data.message || "✅ Sentiment analysis complete.";
+        document.getElementById('output').innerText = JSON.stringify(data.sentiment, null, 2);
+      } catch (err) {
+        document.getElementById('status').innerText = "❌ Sentiment analysis failed.";
+      }
+    }
+  </script>
+</body>
+</html>
