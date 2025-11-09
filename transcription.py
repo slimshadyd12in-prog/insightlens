@@ -49,12 +49,10 @@ def main():
     wav_path = os.path.splitext(audio_path)[0] + f"_{timestamp}.wav"
     txt_path = os.path.splitext(audio_path)[0] + f"_{timestamp}_transcript.txt"
 
-    ffmpeg_path = r"C:\ffmpeg\bin\ffmpeg.exe"
-
     # Convert to WAV
     print("🔄 Converting audio → .wav using ffmpeg...")
     subprocess.run(
-        [ffmpeg_path, "-y", "-i", audio_path, wav_path],
+        ["ffmpeg", "-y", "-i", audio_path, wav_path],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
         check=True
