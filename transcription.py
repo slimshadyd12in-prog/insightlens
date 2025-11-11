@@ -68,7 +68,7 @@ def main():
     # Load Whisper model
     device = get_available_device()
     print("✅ Loading Whisper model...")
-    model = whisper.load_model("base", device=device)
+    model = whisper.load_model("tiny", device=device)
 
     # Transcribe
     print("🎧 Transcribing audio...")

@@ -2,9 +2,12 @@ import os
 import subprocess
 from flask import Flask, render_template, request, jsonify
 from werkzeug.utils import secure_filename
+import whisper
+import numpy as np
+from pydub import AudioSegment
 
 # Import your existing scripts
-import transcription
+#import transcription
 import summarization  # import full module for dynamic file detection
 import sentiment_analysis
 
@@ -16,6 +19,13 @@ DATA_DIR = os.path.join(BASE_DIR, "data")
 os.makedirs(DATA_DIR, exist_ok=True)
 
 app = Flask(__name__)
+
+# ====================================================
+# ✅ Load Whisper model globally (only once)
+# ====================================================
+print("🚀 Loading Whisper model (tiny)...")
+model = whisper.load_model("tiny", device="cpu")
+print("✅ Whisper model loaded successfully!")
 
 # ====================================================
 # Utility Function
@@ -61,14 +71,40 @@ def upload_file():
 @app.route('/transcribe', methods=['POST'])
 def transcribe_audio():
     try:
-        result_text = transcription.main()  # uses BASE_DIR inside transcription.py
+        # Find the most recent uploaded audio file
+        audio_files = [
+            f for f in os.listdir(DATA_DIR)
+            if f.lower().endswith((".m4a", ".wav", ".mp3"))
+        ]
+        if not audio_files:
+            return jsonify({"status": "error", "message": "❌ No uploaded audio file found."}), 400
+
+        audio_files.sort(key=lambda f: os.path.getmtime(os.path.join(DATA_DIR, f)), reverse=True)
+        latest_audio = os.path.join(DATA_DIR, audio_files[0])
+
+        # Convert to mono 16kHz for Whisper
+        audio = AudioSegment.from_file(latest_audio)
+        audio = audio.set_channels(1).set_frame_rate(16000)
+        audio_array = np.array(audio.get_array_of_samples()).astype(np.float32) / 32768.0
+
+        # 🔥 Transcribe using preloaded model
+        result = model.transcribe(audio_array, fp16=False)
+        text = result.get("text", "").strip()
+
+        # Save transcript file for downstream tasks
+        transcript_path = latest_audio.rsplit(".", 1)[0] + "_transcript.txt"
+        with open(transcript_path, "w", encoding="utf-8") as f:
+            f.write(text)
+
         return jsonify({
             "status": "success",
             "message": "✅ Transcription complete!",
-            "transcription": result_text
+            "transcription": text,
+            "transcript_file": transcript_path
         })
+
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)})
+        return jsonify({"status": "error", "message": f"❌ Transcription failed: {str(e)}"})
 
 # -----------------------------
 # Summarization route (Dynamic)
